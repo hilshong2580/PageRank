@@ -1,41 +1,99 @@
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.io.*;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
+
+
 
 public class PageRank {
+
+    public static Map<String,Set<String>> G = new HashMap<>();
+    public static Map<String,Double> I = new HashMap<>();
+    public static Map<String,Double> R = new HashMap<>();
+    public static Set<String> Q = new HashSet<>();
+    public static double tau = 0.0001;
+    public static double lambda = 0.15;
+    public static double toAdd = 0.0;
+
     public static void main(String[] args) throws IOException {
+        PageRank pageRank = new PageRank();
+        pageRank.load("links.srt.gz");
+        for (String key : G.keySet())
+            I.put(key, 1.0/G.size());
+        R = I;
+        int c = 0;
 
-        int count = 0;
-        HashMap<String,ArrayList<String>> multiMap = new HashMap<>();
+//        double norm = 0.0;
+//        double norm2 = 0.0;
+//        for (String key: I.keySet()){
+//            norm += Math.abs(I.get(key) - R.get(key));
+//            norm2 += Math.pow(I.get(key),2);
+//            norm2 = Math.sqrt(norm);
+//        }
+//        if(norm > tau){
+//            for (String key : I.keySet()) {
+//
+//            }
+//        }
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("links.srt"), "UTF-8"));
-        String line;
-        while ((line = reader.readLine()) != null)
-        {
-            ArrayList<String> values = new ArrayList<String>();
-
-            count++;
-            if(count==100)
-                break;
-
-            String[] getName = line.split("\t");
-
-            if(multiMap.containsKey(getName[0])){
-                multiMap.get(getName[0]).add(getName[1]);
-            }
-            else {
-                values.add(getName[1]);
-
-                multiMap.put(getName[0], values);
-            }
-            //System.out.println(line);
+        //line 10 - 12
+        for (String r: R.keySet()) {
+            R.put(r, lambda/G.size());
+            if(c%1000 == 0)
+                System.out.println(c+ " String r: R.keySet() ");
+            c++;
         }
-        multiMap.get("!Hero_d070").forEach(System.out::println);
 
+        for (String p: G.keySet()){
+            Q = G.get(p);
+            toAdd=0;
+            if(c%1000 == 0)
+                System.out.println(c+ " tring p: G.keySet() ");
+            c++;
+
+            for(String q: Q){
+                R.put(q, R.get(q)+(1-lambda)*I.get(p) / Q.size());
+
+                if(c%1000 == 0)
+                    System.out.println(c+ " String q: Q ");
+                c++;
+            }
+
+            if(Q.size() == 0){
+                toAdd += (1-lambda)*(I.get(p)/G.size());
+                    R.put(p, toAdd);
+                    if(c%1000 == 0)
+                        System.out.println(c+ " String key: R.keySet() ");
+                    c++;
+
+            }
+        }
     }
+
+    private void load(String inFile){
+        HashMap<String,Set<String>> tempG= new HashMap<>();
+        try{
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                    new GZIPInputStream(new FileInputStream(inFile)), "UTF-8"));
+            String str;
+            while((str = br.readLine()) != null){
+                String[] token = str.split("\t");
+                if(token.length == 2) {
+                    String source = token[0];
+                    String target = token[1];
+                    if (!G.containsKey(source))
+                        G.put(source, new HashSet<String>());
+                    G.get(source).add(target);
+                    tempG.put(target, new HashSet<String>());
+                }
+            }
+            G.putAll(tempG);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
