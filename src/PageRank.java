@@ -21,53 +21,60 @@ public class PageRank {
             I.put(key, 1.0/G.size());
         R = I;
         int c = 0;
+        int d = 0;
 
-//        double norm = 0.0;
-//        double norm2 = 0.0;
-//        for (String key: I.keySet()){
-//            norm += Math.abs(I.get(key) - R.get(key));
-//            norm2 += Math.pow(I.get(key),2);
-//            norm2 = Math.sqrt(norm);
-//        }
-//        if(norm > tau){
-//            for (String key : I.keySet()) {
-//
-//            }
-//        }
+        do{
+            //print the number of while loop time
+            System.out.println(d);
+            d++;
 
-        //line 10 - 12
-        for (String r: R.keySet()) {
-            R.put(r, lambda/G.size());
-            if(c%1000 == 0)
-                System.out.println(c+ " String r: R.keySet() ");
-            c++;
-        }
-
-        for (String p: G.keySet()){
-            Q = G.get(p);
+            //reset toAdd value
             toAdd=0;
-            if(c%1000 == 0)
-                System.out.println(c+ " tring p: G.keySet() ");
-            c++;
 
-            for(String q: Q){
-                R.put(q, R.get(q)+(1-lambda)*I.get(p) / Q.size());
+            //line 10-12
+            //put the default pageRank into R for each kwy
+            for (String r: R.keySet()) {
+                R.put(r, lambda/G.size());
+            }
 
-                if(c%1000 == 0)
-                    System.out.println(c+ " String q: Q ");
+            //for each p in Graph in line 13 - 25
+            for (String p: G.keySet()){
+                Q = G.get(p);
+
+                for(String q: Q){
+                    R.put(q, R.get(q)+(1-lambda)* I.get(p) / Q.size());
+                }
+
+                if(Q.size() == 0){
+                    toAdd += (1-lambda)*I.get(p)/G.size();
+                }
+            }
+
+            for(String key: R.keySet()){
+                R.put(key, R.get(key)+ toAdd);
+            }
+
+            for (String r: R.keySet()) {
+                if(c%100 == 0)
+                    System.out.println(R.get(r));
                 c++;
             }
 
-            if(Q.size() == 0){
-                toAdd += (1-lambda)*(I.get(p)/G.size());
-                    R.put(p, toAdd);
-                    if(c%1000 == 0)
-                        System.out.println(c+ " String key: R.keySet() ");
-                    c++;
-
-            }
-        }
+        }while(!pageRank.convergedCheck());
+        System.out.println(R.size());
     }
+
+    private boolean convergedCheck(){
+        double norm = 0.0;
+        double norm2 = 0.0;
+        for (String key: I.keySet()){
+            norm += Math.abs(I.get(key) - R.get(key));
+            norm2 += Math.pow(I.get(key),2);
+        }
+        norm2 = Math.sqrt(norm);
+        return norm<tau;
+    }
+
 
     private void load(String inFile){
         HashMap<String,Set<String>> tempG= new HashMap<>();
@@ -95,5 +102,4 @@ public class PageRank {
             e.printStackTrace();
         }
     }
-
 }
