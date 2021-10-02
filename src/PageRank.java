@@ -1,28 +1,24 @@
 import java.io.*;
-import java.time.Duration;
-import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
-import java.text.ParseException;
-import java.util.concurrent.TimeUnit;
 
 public class PageRank {
 
     //default the Map of Graph, Initial, Result, inLink,
     //default the given variable of tau and lambda
-    private Map<String, Set<String>> G = new HashMap<>();
+    public static  Map<String, Set<String>> G = new HashMap<>();
     public static Map<String, Double> I = new HashMap<>();
     public static Map<String, Double> R = new HashMap<>();
     public static Map<String, Integer> inLink = new HashMap<>();
     public static Set<String> Q = new HashSet<>();
     public static double tau = 0.0001;
     public static double lambda = 0.15;
-    public static double c = 1;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         PageRank pageRank = new PageRank(); //create a PageRank class to call each function
-        pageRank.load("links.srt.gz"); //read the compressed file and save the source and target to Graph
+        pageRank.load(); //read the compressed file and save the source and target to Graph
         pageRank.setKeyIR();                //put all the source and target to Initial(with value) and Result Map
         pageRank.doWhileLoop();             //do the while loop when the converged is false
         pageRank.sortMostInLink();          // sort the InLink result and collect the top 75
@@ -31,56 +27,39 @@ public class PageRank {
         pageRank.writeInLink();             // output InLink to text file with correct name
     }
 
-    //output file to pagerank.txt
-    private void writePageRank(){
+    //read the file from compressed file
+    private void load() {
         try {
-            FileWriter myWriter = new FileWriter("pagerank.txt");
-            for (String str: R.keySet()) {
-                //output the content align
-                String temp = String.format("%-50s %-10s", str, R.get(str))+"\n";
-                myWriter.write(temp);
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                    new GZIPInputStream(new FileInputStream("links.srt.gz")), StandardCharsets.UTF_8));
+            String str;
+            while ((str = br.readLine()) != null) {
+                String[] token = str.split("\t");
+                if (token.length == 2) {
+                    String source = token[0];
+                    String target = token[1];
+                    if (!G.containsKey(source))
+                        G.put(source, new HashSet<String>());
+                    G.get(source).add(target);
+                    if (!G.containsKey(target)) {
+                        G.put(target, new HashSet<String>());
+                    }
+                    if(!inLink.containsKey(target))
+                        inLink.put(target, 0);
+                    inLink.put(target, inLink.get(target)+1);
+                }
             }
-            myWriter.close();
         } catch (IOException e) {
-            System.out.println("error: PageRank");
-            e.printStackTrace();
-        }
-    }
-    //output file to inlinks.txt
-    private void writeInLink(){
-        try {
-            FileWriter myWriter = new FileWriter("inlinks.txt");
-            for (String str: inLink.keySet()) {
-                //output the content align
-                myWriter.write(String.format("%-50s %-10s", str, inLink.get(str))+"\n");
-            }
-            myWriter.close();
-        } catch (IOException e) {
-            System.out.println("error: inLink");
             e.printStackTrace();
         }
     }
 
-    //sort the R Map to get top 75 PageRank
-    private void sortTopPageRank(){
-        LinkedHashMap<String, Double> reverse = new LinkedHashMap<>();
-        R.entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                .limit(75)
-                .forEachOrdered(x -> reverse.put(x.getKey(), x.getValue()));
-        R = reverse;
-    }
-
-    //sort the inLink Map to get top 75 frequency
-    private void sortMostInLink(){
-        LinkedHashMap<String, Integer> reverse = new LinkedHashMap<>();
-        inLink.entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                .limit(75)
-                .forEachOrdered(x -> reverse.put(x.getKey(), x.getValue()));
-        inLink = reverse;
+    //set the I and R key and the value
+    private void setKeyIR() {
+        for (String key : G.keySet()) {
+            I.put(key, 1.0 / G.size());
+            R.put(key, 0.0);
+        }
     }
 
     //keep run the while loop if convergedCheck return false, until true
@@ -91,8 +70,8 @@ public class PageRank {
 
             //line 10-12
             //put the default pageRank into R for each kwy
-            for (String r : R.keySet())
-                R.put(r, lambda / G.size());
+
+            R.replaceAll((r, v) -> lambda / G.size());
 
             //for each p in Graph in line 13 - 25
             for (String p : G.keySet()) {
@@ -117,14 +96,6 @@ public class PageRank {
         } while (convergedCheck());
     }
 
-    //set the I and R key and the value
-    private void setKeyIR() {
-        for (String key : G.keySet()) {
-            I.put(key, 1.0 / G.size());
-            R.put(key, 0.0);
-        }
-    }
-
     //check the converged by calculate the norm value from I and R
     private boolean convergedCheck() {
         //create the norm to compare with tau
@@ -134,42 +105,67 @@ public class PageRank {
         double norm = 0.0;
         for (String key : I.keySet()) {
             norm += Math.abs(I.get(key) - R.get(key));
-           //norm2 += Math.pow(I.get(key), 2);
+            //norm2 += Math.pow(I.get(key), 2);
         }
         //norm2 = Math.sqrt(norm);
         return norm < tau;
     }
 
-    //read the file from compressed file
-    private void load(String inFile) {
-        HashMap<String, Set<String>> tempG = new HashMap<>();
+    //sort the R Map to get top 75 PageRank
+    private void sortTopPageRank(){
+        LinkedHashMap<String, Double> reverse = new LinkedHashMap<>();
+        R.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .limit(75)
+                .forEachOrdered(x -> reverse.put(x.getKey(), x.getValue()));
+        R = reverse;
+    }
+
+    //sort the inLink Map to get top 75 frequency
+    private void sortMostInLink(){
+        LinkedHashMap<String, Integer> reverse = new LinkedHashMap<>();
+        inLink.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .limit(75)
+                .forEachOrdered(x -> reverse.put(x.getKey(), x.getValue()));
+        inLink = reverse;
+    }
+
+    //output file to pagerank.txt
+    private void writePageRank(){
+        int index = 1;
         try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(
-                    new GZIPInputStream(new FileInputStream(inFile)), "UTF-8"));
-            String str;
-            while ((str = br.readLine()) != null) {
-                String[] token = str.split("\t");
-                if (token.length == 2) {
-                    String source = token[0];
-                    String target = token[1];
-                    if (!G.containsKey(source))
-                        G.put(source, new HashSet<String>());
-                    G.get(source).add(target);
-                    if (!G.containsKey(target)) {
-                        G.put(target, new HashSet<String>());
-                    }
-                    if(!inLink.containsKey(target))
-                        inLink.put(target, 0);
-                    inLink.put(target, inLink.get(target)+1);
-                }
+            FileWriter myWriter = new FileWriter("pagerank.txt");
+            for (String str: R.keySet()) {
+                //output the content align
+                String temp = String.format("%-5s %-50s %-10s",index, str, R.get(str))+"\n";
+                myWriter.write(temp);
+                index++;
             }
-            //G.putAll(tempG);
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            myWriter.close();
         } catch (IOException e) {
+            System.out.println("error: PageRank");
             e.printStackTrace();
         }
     }
+
+    //output file to inlinks.txt
+    private void writeInLink(){
+        int index = 1;
+        try {
+            FileWriter myWriter = new FileWriter("inlinks.txt");
+            for (String str: inLink.keySet()) {
+                //output the content align
+                myWriter.write(String.format("%-5s %-50s %-10s",index, str, inLink.get(str))+"\n");
+                index++;
+            }
+            myWriter.close();
+        } catch (IOException e) {
+            System.out.println("error: inLink");
+            e.printStackTrace();
+        }
+    }
+
 }
