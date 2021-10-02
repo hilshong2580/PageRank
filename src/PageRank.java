@@ -1,6 +1,11 @@
 import java.io.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
+
+import java.text.ParseException;
+import java.util.concurrent.TimeUnit;
 
 public class PageRank {
 
@@ -13,6 +18,7 @@ public class PageRank {
     public static Set<String> Q = new HashSet<>();
     public static double tau = 0.0001;
     public static double lambda = 0.15;
+    public static double c = 1;
 
     public static void main(String[] args) throws IOException {
         PageRank pageRank = new PageRank(); //create a PageRank class to call each function
@@ -25,6 +31,7 @@ public class PageRank {
         pageRank.writeInLink();             // output InLink to text file with correct name
     }
 
+    //output file to pagerank.txt
     private void writePageRank(){
         try {
             FileWriter myWriter = new FileWriter("pagerank.txt");
@@ -39,7 +46,7 @@ public class PageRank {
             e.printStackTrace();
         }
     }
-
+    //output file to inlinks.txt
     private void writeInLink(){
         try {
             FileWriter myWriter = new FileWriter("inlinks.txt");
@@ -54,6 +61,7 @@ public class PageRank {
         }
     }
 
+    //sort the R Map to get top 75 PageRank
     private void sortTopPageRank(){
         LinkedHashMap<String, Double> reverse = new LinkedHashMap<>();
         R.entrySet()
@@ -64,6 +72,7 @@ public class PageRank {
         R = reverse;
     }
 
+    //sort the inLink Map to get top 75 frequency
     private void sortMostInLink(){
         LinkedHashMap<String, Integer> reverse = new LinkedHashMap<>();
         inLink.entrySet()
@@ -74,39 +83,41 @@ public class PageRank {
         inLink = reverse;
     }
 
+    //keep run the while loop if convergedCheck return false, until true
     private void doWhileLoop() {
         do {
             double toAdd = 0.0;
+
 
             //line 10-12
             //put the default pageRank into R for each kwy
             for (String r : R.keySet())
                 R.put(r, lambda / G.size());
 
-
             //for each p in Graph in line 13 - 25
             for (String p : G.keySet()) {
                 Q = G.get(p);
 
+                //update the R key's value if Q's size is not zero
                 if (Q.size() > 0)
                     for (String q : Q)
                         R.put(q, R.get(q) + (1 - lambda) * I.get(p) / Q.size());
-
-                if (Q.size() == 0)
+                else
                     toAdd += (1 - lambda) * I.get(p) / G.size();
             }
 
+            //update the R key's value for Q's size is zero
             for (String key : R.keySet())
                 R.put(key, R.get(key) + toAdd);
 
-            if (convergedCheck())
+            if (convergedCheck()) //break the loop if true
                 break;
 
-            I.putAll(R);
-
-        } while (true);
+            I.putAll(R); //update the I map
+        } while (convergedCheck());
     }
 
+    //set the I and R key and the value
     private void setKeyIR() {
         for (String key : G.keySet()) {
             I.put(key, 1.0 / G.size());
@@ -114,20 +125,22 @@ public class PageRank {
         }
     }
 
+    //check the converged by calculate the norm value from I and R
     private boolean convergedCheck() {
-        double norm = 0.0;
-        double norm2 = 0.0;
+        //create the norm to compare with tau
+        //norm2 is not used, It appeared from prof lecture
+        //double norm2 = 0.0;
 
-        //System.out.println(I.keySet().size());
+        double norm = 0.0;
         for (String key : I.keySet()) {
             norm += Math.abs(I.get(key) - R.get(key));
-            norm2 += Math.pow(I.get(key), 2);
+           //norm2 += Math.pow(I.get(key), 2);
         }
-        System.out.println(norm);
-        norm2 = Math.sqrt(norm);
+        //norm2 = Math.sqrt(norm);
         return norm < tau;
     }
 
+    //read the file from compressed file
     private void load(String inFile) {
         HashMap<String, Set<String>> tempG = new HashMap<>();
         try {
